@@ -1,9 +1,10 @@
 # Plex ClearLogo Updater Scripts
 
-This repository contains two Python scripts for updating ClearLogo (logo) images in your Plex Media Server:
+This repository contains a set of Python utilities for updating ClearLogo (logo) images in your Plex Media Server:
 
 - **clearlogo.py**: Interactive, per-show/movie logo updater using image URLs.
 - **local-clearlogo.py**: Bulk updater that applies local logo image files to all Movies and TV Shows in your Plex libraries.
+- **gui_clearlogo.py**: Graphical browser that lets you step through every item in your libraries, preview posters and existing ClearLogos, and optionally swap them by pasting a new image URL.
 
 ---
 
@@ -63,11 +64,33 @@ python local-clearlogo.py --all
 
 ---
 
+### 3. `gui_clearlogo.py` – Graphical Logo Browser
+
+A Tkinter-based desktop application that connects to your Plex server and iterates every movie and show in your libraries. It downloads the poster and currently selected ClearLogo (when available), displays them side by side, and offers simple controls to keep, skip, or replace the logo by providing a new image URL.
+
+#### Features
+
+* Automatically traverses all movie and TV libraries defined in Plex.
+* Shows the poster art together with the active ClearLogo (if one is assigned).
+* Indicates the provider/source of the current logo when Plex reports it.
+* Lets you paste a replacement URL and uploads it via `uploadLogo` without leaving the app.
+* Performs artwork downloads and uploads in background threads to keep the interface responsive.
+
+#### Example Usage
+
+```bash
+python gui_clearlogo.py
+```
+
+*Use the on-screen buttons to keep or skip the displayed item, or choose “Change Logo” to paste a new image URL.*
+
+---
+
 ## Requirements
 
 * **Python 3.x:** (Developed with 3.12, should work on recent 3.x versions).
 * **`pip`:** Python package installer (usually included with Python).
-* **`plexapi` library:** Requires a **recent version** (e.g., 4.17.0 or later) that includes the `uploadLogo` method for `Show` objects.
+* **Python packages:** Install everything with `pip install -r requirements.txt`. The list includes `plexapi` (4.17.0 or later recommended), `requests`, and `Pillow`.
 
 ---
 
@@ -81,13 +104,13 @@ python local-clearlogo.py --all
         ```
     * Or, download the `clearlogo.py` and/or `local-clearlogo.py` files directly.
 
-2.  **Install/Upgrade `plexapi`:**
+2.  **Install/Upgrade dependencies:**
     * Open your terminal or command prompt in the script's directory.
-    * Run the following command to ensure you have a recent version:
+    * Run the following command to install or update every required package:
         ```bash
-        pip install --upgrade plexapi
+        pip install -r requirements.txt
         ```
-    * Or, run `pip install -r requirements.txt`
+    * If you prefer to manage packages manually, ensure `plexapi` is at least version 4.17.0, and install `requests` plus `Pillow` for the GUI.
 
 3.  **Create Configuration File:**
     * In the same directory as the scripts, create a file named `config.json`:
@@ -119,6 +142,14 @@ python local-clearlogo.py [options]
 * The first run will prompt you to map your Plex library folders to local folders.
 * The script will scan your libraries and upload logos from local files.
 * Use `--help` to see all options.
+
+### For `gui_clearlogo.py` (Graphical Browser):
+
+```bash
+python gui_clearlogo.py
+```
+* A window will open and automatically start traversing your Plex movie and TV show libraries.
+* Use “Keep Logo (Next)” or “Skip Item” to move to the next entry, and “Change Logo” to paste a new ClearLogo image URL.
 
 ---
 
