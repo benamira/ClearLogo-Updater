@@ -156,6 +156,8 @@ class ClearLogoApp:
 
         self.sections = [section for section in self.plex.library.sections() if section.type in ("movie", "show")]
         if not self.sections:
+        sections = [section for section in self.plex.library.sections() if section.type in ("movie", "show")]
+        if not sections:
             messagebox.showinfo("Libraries", "No movie or show libraries were found on the server.")
             self.disable_controls()
             return
@@ -163,6 +165,9 @@ class ClearLogoApp:
         self.populate_library_list()
         self.status_var.set(f"Connected to {self.plex.friendlyName}. Select a library to begin.")
         self.enable_library_selection()
+        self.item_iter = self._iter_items(sections)
+        self.status_var.set(f"Connected to {self.plex.friendlyName}. Loading items...")
+        self.root.after(100, self.next_item)
 
     @staticmethod
     def _iter_items(sections) -> Iterator:
@@ -244,6 +249,12 @@ class ClearLogoApp:
             self.current_section = None
             self.disable_controls()
             self.enable_library_selection()
+            self.info_var.set("All items processed.")
+            self.logo_info_var.set("")
+            self.poster_label.config(image="", text="No more items")
+            self.logo_label.config(image="", text="No more items")
+            self.status_var.set("Completed browsing all items.")
+            self.disable_controls()
             return
 
         self.show_item(item)
@@ -286,6 +297,13 @@ class ClearLogoApp:
             0,
             lambda: self._update_artwork(poster_bytes, logo_bytes, logo_details, display_id),
         )
+        threading.Thread(target=self._load_artwork, args=(item,), daemon=True).start()
+
+    # ------------------------------------------------------------- Artwork --
+    def _load_artwork(self, item) -> None:
+        poster_bytes = self._download_image(self._poster_url(item))
+        logo_bytes, logo_details = self._download_logo(item)
+        self.root.after(0, lambda: self._update_artwork(poster_bytes, logo_bytes, logo_details))
 
     def _poster_url(self, item) -> Optional[str]:
         for attr in ("posterUrl", "thumbUrl"):
@@ -338,6 +356,7 @@ class ClearLogoApp:
     ) -> None:
         if display_id != self.active_display_id:
             return
+    def _update_artwork(self, poster_bytes: Optional[bytes], logo_bytes: Optional[bytes], logo_text: str) -> None:
         self.poster_photo = self._bytes_to_photo(poster_bytes, POSTER_MAX_SIZE)
         if self.poster_photo:
             self.poster_label.config(image=self.poster_photo, text="")

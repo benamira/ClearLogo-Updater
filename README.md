@@ -72,6 +72,11 @@ A Tkinter-based desktop application that connects to your Plex server and lets y
 
 * Presents a list of all movie and TV libraries so you can pick where to start.
 * Iterates through each item in the chosen library, one by one.
+A Tkinter-based desktop application that connects to your Plex server and iterates every movie and show in your libraries. It downloads the poster and currently selected ClearLogo (when available), displays them side by side, and offers simple controls to keep, skip, or replace the logo by providing a new image URL.
+
+#### Features
+
+* Automatically traverses all movie and TV libraries defined in Plex.
 * Shows the poster art together with the active ClearLogo (if one is assigned).
 * Indicates the provider/source of the current logo when Plex reports it.
 * Lets you paste a replacement URL and uploads it via `uploadLogo` without leaving the app.
@@ -84,6 +89,7 @@ python gui_clearlogo.py
 ```
 
 *After the window connects to Plex, highlight a library and press “Browse Selected Library.” Use the on-screen buttons to keep or skip the displayed item, or choose “Change Logo” to paste a new image URL.*
+*Use the on-screen buttons to keep or skip the displayed item, or choose “Change Logo” to paste a new image URL.*
 
 ---
 
