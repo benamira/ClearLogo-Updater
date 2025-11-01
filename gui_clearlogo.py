@@ -52,12 +52,19 @@ class ClearLogoApp:
         self.info_var = tk.StringVar()
         self.logo_info_var = tk.StringVar()
 
+        self.sections: List = []
+        self.current_section = None
+        self.library_listbox: Optional[tk.Listbox] = None
+        self.library_button: Optional[tk.Button] = None
+
         self.poster_photo: Optional[ImageTk.PhotoImage] = None
         self.logo_photo: Optional[ImageTk.PhotoImage] = None
 
         self.plex: Optional[PlexServer] = None
         self.item_iter: Optional[Iterator] = None
         self.current_item = None
+        self.display_counter = 0
+        self.active_display_id = 0
         self.session = requests.Session()
 
         self._build_ui()
@@ -67,6 +74,34 @@ class ClearLogoApp:
     def _build_ui(self) -> None:
         header = tk.Label(self.root, text="Plex ClearLogo Browser", font=("Segoe UI", 18, "bold"))
         header.pack(pady=(10, 5))
+
+        library_frame = tk.Frame(self.root)
+        library_frame.pack(pady=(5, 10), fill=tk.X)
+
+        library_label = tk.Label(
+            library_frame,
+            text="Select a Plex library to browse its ClearLogos:",
+            font=("Segoe UI", 12),
+        )
+        library_label.pack(anchor="w")
+
+        list_frame = tk.Frame(library_frame)
+        list_frame.pack(fill=tk.X, pady=(4, 0))
+
+        self.library_listbox = tk.Listbox(list_frame, height=6, exportselection=False)
+        self.library_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.library_listbox.bind("<Double-Button-1>", lambda _event: self.load_selected_library())
+
+        scrollbar = tk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.library_listbox.yview)
+        scrollbar.pack(side=tk.LEFT, fill=tk.Y)
+        self.library_listbox.config(yscrollcommand=scrollbar.set)
+
+        self.library_button = tk.Button(
+            library_frame,
+            text="Browse Selected Library",
+            command=self.load_selected_library,
+        )
+        self.library_button.pack(pady=(6, 0))
 
         info_label = tk.Label(self.root, textvariable=self.info_var, font=("Segoe UI", 12))
         info_label.pack(pady=(0, 5))
@@ -100,6 +135,10 @@ class ClearLogoApp:
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        self.info_var.set("Select a library to begin browsing.")
+        self.disable_controls()
+        self.disable_library_selection()
+
     # ------------------------------------------------------------ Connection --
     def _initialize_connection(self) -> None:
         url, token = load_config()
@@ -115,12 +154,17 @@ class ClearLogoApp:
             self.disable_controls()
             return
 
+        self.sections = [section for section in self.plex.library.sections() if section.type in ("movie", "show")]
+        if not self.sections:
         sections = [section for section in self.plex.library.sections() if section.type in ("movie", "show")]
         if not sections:
             messagebox.showinfo("Libraries", "No movie or show libraries were found on the server.")
             self.disable_controls()
             return
 
+        self.populate_library_list()
+        self.status_var.set(f"Connected to {self.plex.friendlyName}. Select a library to begin.")
+        self.enable_library_selection()
         self.item_iter = self._iter_items(sections)
         self.status_var.set(f"Connected to {self.plex.friendlyName}. Loading items...")
         self.root.after(100, self.next_item)
@@ -134,6 +178,46 @@ class ClearLogoApp:
             except Exception as exc:  # pragma: no cover - network interaction
                 print(f"Error loading items from {section.title}: {exc}")
                 continue
+
+    # ------------------------------------------------------ Library Selection --
+    def populate_library_list(self) -> None:
+        if not self.library_listbox:
+            return
+        self.library_listbox.delete(0, tk.END)
+        for section in self.sections:
+            display_title = f"{section.title} ({section.type.capitalize()})"
+            self.library_listbox.insert(tk.END, display_title)
+        if self.sections:
+            self.library_listbox.selection_set(0)
+
+    def load_selected_library(self) -> None:
+        if not self.sections or not self.library_listbox:
+            return
+        selection = self.library_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("Library", "Please select a library to browse.")
+            return
+        index = selection[0]
+        self.current_section = self.sections[index]
+        self.item_iter = self._iter_items([self.current_section])
+        self.info_var.set(f"Preparing items from {self.current_section.title}...")
+        self.logo_info_var.set("")
+        self.poster_label.config(image="", text="Loading poster...")
+        self.logo_label.config(image="", text="Loading logo...")
+        self.disable_library_selection()
+        self.root.after(100, self.next_item)
+
+    def disable_library_selection(self) -> None:
+        if self.library_listbox:
+            self.library_listbox.config(state=tk.DISABLED)
+        if self.library_button:
+            self.library_button.config(state=tk.DISABLED)
+
+    def enable_library_selection(self) -> None:
+        if self.library_listbox:
+            self.library_listbox.config(state=tk.NORMAL)
+        if self.library_button:
+            self.library_button.config(state=tk.NORMAL)
 
     # ------------------------------------------------------------- Controls --
     def disable_controls(self) -> None:
@@ -149,10 +233,22 @@ class ClearLogoApp:
     # ----------------------------------------------------------- Navigation --
     def next_item(self) -> None:
         if not self.item_iter:
+            self.status_var.set("Select another library to continue.")
+            self.enable_library_selection()
             return
         try:
             item = next(self.item_iter)
         except StopIteration:
+            library_name = self.current_section.title if self.current_section else "library"
+            self.info_var.set(f"All items processed for {library_name}.")
+            self.logo_info_var.set("")
+            self.poster_label.config(image="", text="No more items")
+            self.logo_label.config(image="", text="No more items")
+            self.status_var.set("Completed browsing all items. Select another library to continue.")
+            self.item_iter = None
+            self.current_section = None
+            self.disable_controls()
+            self.enable_library_selection()
             self.info_var.set("All items processed.")
             self.logo_info_var.set("")
             self.poster_label.config(image="", text="No more items")
@@ -165,6 +261,9 @@ class ClearLogoApp:
 
     def show_item(self, item) -> None:
         self.current_item = item
+        self.display_counter += 1
+        display_id = self.display_counter
+        self.active_display_id = display_id
         title = getattr(item, "title", "Unknown Title")
         year = getattr(item, "year", "") or ""
         section_title = ""
@@ -188,6 +287,16 @@ class ClearLogoApp:
         self.status_var.set("Fetching artwork...")
         self.disable_controls()
 
+        threading.Thread(target=self._load_artwork, args=(item, display_id), daemon=True).start()
+
+    # ------------------------------------------------------------- Artwork --
+    def _load_artwork(self, item, display_id: int) -> None:
+        poster_bytes = self._download_image(self._poster_url(item))
+        logo_bytes, logo_details = self._download_logo(item)
+        self.root.after(
+            0,
+            lambda: self._update_artwork(poster_bytes, logo_bytes, logo_details, display_id),
+        )
         threading.Thread(target=self._load_artwork, args=(item,), daemon=True).start()
 
     # ------------------------------------------------------------- Artwork --
@@ -238,6 +347,15 @@ class ClearLogoApp:
         except Exception:
             return None
 
+    def _update_artwork(
+        self,
+        poster_bytes: Optional[bytes],
+        logo_bytes: Optional[bytes],
+        logo_text: str,
+        display_id: int,
+    ) -> None:
+        if display_id != self.active_display_id:
+            return
     def _update_artwork(self, poster_bytes: Optional[bytes], logo_bytes: Optional[bytes], logo_text: str) -> None:
         self.poster_photo = self._bytes_to_photo(poster_bytes, POSTER_MAX_SIZE)
         if self.poster_photo:

@@ -66,6 +66,12 @@ python local-clearlogo.py --all
 
 ### 3. `gui_clearlogo.py` – Graphical Logo Browser
 
+A Tkinter-based desktop application that connects to your Plex server and lets you choose a movie or show library to browse. For the selected library it iterates each item, downloads the poster and currently selected ClearLogo (when available), displays them side by side, and offers simple controls to keep, skip, or replace the logo by providing a new image URL.
+
+#### Features
+
+* Presents a list of all movie and TV libraries so you can pick where to start.
+* Iterates through each item in the chosen library, one by one.
 A Tkinter-based desktop application that connects to your Plex server and iterates every movie and show in your libraries. It downloads the poster and currently selected ClearLogo (when available), displays them side by side, and offers simple controls to keep, skip, or replace the logo by providing a new image URL.
 
 #### Features
@@ -82,6 +88,7 @@ A Tkinter-based desktop application that connects to your Plex server and iterat
 python gui_clearlogo.py
 ```
 
+*After the window connects to Plex, highlight a library and press “Browse Selected Library.” Use the on-screen buttons to keep or skip the displayed item, or choose “Change Logo” to paste a new image URL.*
 *Use the on-screen buttons to keep or skip the displayed item, or choose “Change Logo” to paste a new image URL.*
 
 ---
